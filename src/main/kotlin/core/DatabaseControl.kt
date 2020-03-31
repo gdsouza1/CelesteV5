@@ -15,7 +15,8 @@ object DatabaseControl {
             } catch (failure: SQLException) {
                 Logger.getRootLogger().error("Could not connect to Heroku PostgreSQL with memoized values, retrying with new parsed values")
                 try {
-                    val trip = getJDBCFromCmd()
+                    val dbUrl = ConfigurationAccessor.getConfig("DATABASE_URL")
+                    val trip = dbToJDBC(dbUrl)
                     return DriverManager.getConnection(trip.first, trip.second, trip.third)
                 } catch (newFailure: SQLException) {
                     throw IllegalStateException("Could not connect from new parsed values")
@@ -23,16 +24,6 @@ object DatabaseControl {
             }
         }
         throw IllegalStateException("Impossible to connect.")
-    }
-
-
-    fun getJDBCFromCmd(): Triple<String, String, String> {
-        val process = Runtime.getRuntime().exec("C:\\Program Files\\heroku\\bin\\heroku.cmd config:get DATABASE_URL -a celestev5")
-        val input = process.inputStream
-        val reader = input.bufferedReader()
-        val dbUrl = reader.readLine()
-
-        return dbToJDBC(dbUrl)
     }
 
     //Extract jdbc username and password from jdbcurl

@@ -29,7 +29,7 @@ object StartupRoutine {
     }
 
     private fun database() {
-        val url: String? = System.getenv("  JDBC_DATABASE_URL")
+        val url: String? = System.getenv("JDBC_DATABASE_URL")
         try {
             if (url == null) {
                 backupThroughCmd()
@@ -50,7 +50,8 @@ object StartupRoutine {
 
     private fun backupThroughCmd() {
         try {
-            val trip = DatabaseControl.getJDBCFromCmd()
+            val dbUrl = ConfigurationAccessor.getConfig("DATABASE_URL")
+            val trip = DatabaseControl.dbToJDBC(dbUrl)
             DriverManager.getConnection(trip.first, trip.second, trip.third).close()
             //Memoize
             jdbcurl = trip.first

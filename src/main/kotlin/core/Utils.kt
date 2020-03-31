@@ -58,14 +58,6 @@ inline fun <reified T> logger(): org.slf4j.Logger {
     return LoggerFactory.getLogger(T::class.java)
 }
 
-//Get credentials from the credentials file, credential file should not go to git //
-fun getCredential(key: String): Any {
-    //Resource input stream
-    val credentialStream = {}.javaClass.getResourceAsStream("/credentials.json")
-    //Tokenize input stream and retrieve key
-    return JSONObject(JSONTokener(credentialStream)).get(key)
-}
-
 /* Checks only if the string is 18 in length and all numbers
 * Might still not actually be a snowflake */
 fun isSnowflake(str: String): Boolean {
@@ -167,14 +159,13 @@ fun <F, S> MutablePair<F, S>.immutableCopy(): Pair<F, S> {
     return Pair(this.left, this.right)
 }
 
+//Compute function to all values in map and add all to receiver if absent
 fun <K, V, M> HashMap<K, V>.computeAllIfAbsent(map: HashMap<K, M>, mappingFunction: (M) -> V) {
     for (entry in map.entries) {
         val key = entry.key
         val value = entry.value
         val mappedValue = mappingFunction.invoke(value)
 
-        this[key] = mappedValue
+        this.putIfAbsent(key, mappedValue)
     }
 }
-
-

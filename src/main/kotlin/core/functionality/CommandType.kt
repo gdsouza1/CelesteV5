@@ -4,10 +4,10 @@ import com.google.common.reflect.ClassPath
 import net.dv8tion.jda.api.entities.Message
 import java.util.stream.Collectors
 
+@Suppress("UnstableApiUsage")
 object CommandType {
 
     @Suppress("UNCHECKED_CAST")
-
     private val commandKlasses by lazy {
         val path = ClassPath.from(Thread.currentThread().contextClassLoader)
         val classInfos = path.getTopLevelClasses("core.functionality.commands")

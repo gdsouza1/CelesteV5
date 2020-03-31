@@ -116,11 +116,12 @@ abstract class Command(val message: Message) {
             val parameter = match.first
             val argument = match.second
 
-            if (parameter.isSubpar) {
-                //Find substring representing the value inbetween parenthesis
-                val start = argument.indexOf("(")
-                val end = argument.indexOf(")")
-                val value = argument.substring(start + 1, end)
+            val lparenthesis = argument.indexOf("(")
+            val rparenthesis = argument.indexOf(")")
+
+            if (parameter.isSubpar && lparenthesis != -1 && rparenthesis != -1) {
+                //Find substring representing the value in between parenthesis
+                val value = argument.substring(lparenthesis + 1, rparenthesis)
                 //Add the parsed value to parameters
                 parsedParameters[parameter] = Pair(true, value)
             } else {

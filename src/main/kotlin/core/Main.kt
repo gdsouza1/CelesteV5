@@ -17,14 +17,8 @@ object Main {
     fun main(args: Array<String>) {
         try {
 
-            val path = ClassPath.from(Thread.currentThread().contextClassLoader)
-            val a: ImmutableSet<ClassPath.ClassInfo>? = path.getTopLevelClasses("core.functionality.commands")
-            a?.forEach {
 
-            }
-
-
-            val token = getCredential("token_v3") as String
+            val token = ConfigurationAccessor.getConfig("TOKEN_V3")
             val jdab = JDABuilder(AccountType.BOT)
 
             jdab.setToken(token)

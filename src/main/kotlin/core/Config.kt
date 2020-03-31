@@ -1,4 +1,7 @@
 package core
 
-const val prefix = "c>"
+val prefix: String by lazy {
+    ConfigurationAccessor.getConfig("PREFIX")
+}
+
 const val shouldAttentBots = false
