@@ -1,9 +1,12 @@
 package core.functionality
 
+import core.computeAllIfAbsent
 import core.emptyConsumer
+import core.mutableCopy
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageEmbed
 import net.dv8tion.jda.api.requests.restaction.MessageAction
+import net.dv8tion.jda.internal.utils.tuple.MutablePair
 import org.slf4j.Logger
 import java.io.File
 import java.math.BigDecimal
@@ -49,6 +52,7 @@ abstract class Command(val message: Message) {
     protected val guild by lazy { message.guild }
     private val channel by lazy { message.channel }
     protected val author by lazy { message.author }
+    protected val jda by lazy { message.jda }
     protected var parameters: HashMap<AppendableParameter, Pair<Boolean, String?>> = HashMap()
 
     //Starting point of execution, called by command executor
@@ -58,67 +62,84 @@ abstract class Command(val message: Message) {
     }
 
     protected fun parseParameters(vararg pars: AppendableParameter) {
-        val map = HashMap<AppendableParameter, Pair<Boolean, String?>>(pars.size)
+        val map = HashMap<AppendableParameter, MutablePair<Boolean, String?>>(pars.size)
         for (par in pars) {
-            map[par] = Pair(false, null)
+            map[par] = MutablePair<Boolean, String?>(false, null)
         }
         parseParameters(map)
     }
 
-    private fun parseParameters(pars: Map<AppendableParameter, Pair<Boolean, String?>>) {
-        val parameterMap = LinkedHashMap<AppendableParameter, Pair<Boolean, String?>>(pars)
-        parameterMap.putAll(parameters)
+    private fun parseParameters(pars: Map<AppendableParameter, MutablePair<Boolean, String?>>) {
 
-        val parsed = HashMap<AppendableParameter, Pair<Boolean, String?>>()
+        //Add all pars from parameter
+        val allParameters = LinkedHashMap<AppendableParameter, MutablePair<Boolean, String?>>(pars)
+        //Add all already existing parameters
+        allParameters.computeAllIfAbsent(parameters) { it.mutableCopy() }
 
-        val formattedArr = ArrayList<String>()
+
+        //Stores all message parts split by " " (whitespace)
+        val messageArguments = ArrayList<String>()
+
         val splitMsg = message.contentRaw.split(" ")
         for (str in splitMsg) {
+            //Only consider an argument if it is not empty or blank, to allow multiple whitespaces between args and save iterations
             if (str != " " && str != "") {
-                formattedArr.add(str)
+                messageArguments.add(str)
             }
         }
-        for (formatted in formattedArr) {
-            for (parameter in parameterMap) {
+        //Remove first index, since it cannot be a parameter
+        messageArguments.removeAt(0)
 
-                val par = parameter.key
-                val simplePattern = Pattern.compile("${par.prefix}${par.name}").toRegex()
-                val subParPattern = Pattern.compile("${par.prefix}${par.name}\\(([^(?!)]*)\\)")
+        //Parsed Structure = HashMap -> ParameterObject , Pair -> Presence, Value (if default -> default else null)
+        val parsedParameters = HashMap<AppendableParameter, Pair<Boolean, String?>>()
 
-                if (formatted.matches(simplePattern) || formatted.matches(subParPattern.toRegex())) {
+        //Scan message and match against parameters to find out what need to be parsed
+        //Parameter to parse structure = Pair -> The parameter object , the message arg it was matched to
+        val parametersToParse = ArrayList<Pair<AppendableParameter, String>>()
 
-                    if (par.isSubpar) {
-                        val matcher = subParPattern.matcher(formatted)
-                        var subparameter: String? = null
-                        while (matcher.find()) {
-                            subparameter = matcher.group(1)
-                        }
-
-                        if (subparameter == null) {
-                            val defaultPar: String? = par.defaultPar
-                            if (defaultPar != null) {
-                                subparameter = defaultPar
-                            }
-                        }
-
-                        parsed[par] = Pair(true, subparameter)
-                    } else
-                        parsed[par] = Pair(true, null)
+        outer@ for (parameter in allParameters.keys) {
+            val prefSuff = "${parameter.prefix}${parameter.name}"
+            val pattern = Pattern.compile("$prefSuff|$prefSuff\\(([^(?!)]*)\\)").toRegex()
+            for (arg in messageArguments) {
+                if (pattern.matches(arg)) {
+                    parametersToParse.add(Pair(parameter, arg))
+                    continue@outer
                 }
             }
+            parsedParameters[parameter] = Pair(false, parameter.defaultPar)
         }
-        parameters = parsed
+
+        //Parse the present ones
+        for (match in parametersToParse) {
+            //First = Parameter
+            //Second = string matched to
+            val parameter = match.first
+            val argument = match.second
+
+            if (parameter.isSubpar) {
+                //Find substring representing the value inbetween parenthesis
+                val start = argument.indexOf("(")
+                val end = argument.indexOf(")")
+                val value = argument.substring(start + 1, end)
+                //Add the parsed value to parameters
+                parsedParameters[parameter] = Pair(true, value)
+            } else {
+                //If the parameter is not marked as needing a subparameter, mark as true and value to default
+                parsedParameters[parameter] = Pair(true, parameter.defaultPar)
+            }
+        }
+        parameters = parsedParameters
     }
 
     protected fun appendParameters(pars: Collection<AppendableParameter>) {
         for (par in pars) {
-            parameters[par] = Pair(false, null)
+            parameters[par] = Pair<Boolean, String?>(false, null)
         }
     }
 
     protected fun appendParameters(vararg pars: AppendableParameter) {
         for (par in pars) {
-            parameters[par] = Pair(false, null)
+            parameters[par] = Pair<Boolean, String?>(false, null)
         }
     }
 
@@ -137,7 +158,7 @@ abstract class Command(val message: Message) {
     }
 
     protected infix fun HashMap<AppendableParameter, Pair<Boolean, String?>>.subpar(par: AppendableParameter): String? {
-        require(par.isSubpar && this present par)
+        require(par.isSubpar)
         return parameters[par]?.second
     }
 

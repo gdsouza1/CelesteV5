@@ -1,3 +1,0 @@
-package core.functionality.commands
-
-interface DatabaseReliant

@@ -4,15 +4,13 @@ import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.User
+import net.dv8tion.jda.internal.utils.tuple.MutablePair
 import org.json.JSONObject
 import org.json.JSONTokener
-import org.apache.log4j.Logger
 import org.slf4j.LoggerFactory
+import java.awt.Color
 import java.io.IOException
 import java.net.URL
-import java.sql.Connection
-import java.sql.DriverManager
-import java.sql.SQLException
 import java.util.function.Consumer
 
 private val available = Runtime.getRuntime().availableProcessors()
@@ -148,5 +146,35 @@ fun checkInternetAccess(url: String) = checkInternetAccess(URL(url))
 fun checkInternetAccess() = checkInternetAccess(URL("https://www.google.com"))
 
 
+//Get a user's role color as color
+fun getUserRoleColor(user: User, guild: Guild): Color {
+    require(isPresent(user, guild))
+
+    val member = guild.memberCache.getElementById(user.id)
+    return member?.color ?: Color.PINK
+}
+
+//Convert immutable pair to mutable pair
+fun <F, S> Pair<F, S>.mutableCopy(): MutablePair<F, S> {
+    return MutablePair(this.first, this.second)
+}
+
+//Convert mutable pair into immutable pair
+fun <F, S> MutablePair<F, S>.immutableCopy(): Pair<F, S> {
+    val a = LinkedHashMap<String, Pair<String, String>>()
+    val b = LinkedHashMap<String, MutablePair<String, String>>()
+    a.computeAllIfAbsent(b) { s -> s.immutableCopy() }
+    return Pair(this.left, this.right)
+}
+
+fun <K, V, M> HashMap<K, V>.computeAllIfAbsent(map: HashMap<K, M>, mappingFunction: (M) -> V) {
+    for (entry in map.entries) {
+        val key = entry.key
+        val value = entry.value
+        val mappedValue = mappingFunction.invoke(value)
+
+        this[key] = mappedValue
+    }
+}
 
 

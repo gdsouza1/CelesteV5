@@ -12,7 +12,7 @@ import java.sql.Connection
 object OnGuildJoinScanner {
 
     fun acceptEvent(event: GuildJoinEvent) {
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.Default).launch {
             updateUserBase(event.guild)
         }
     }
@@ -20,7 +20,7 @@ object OnGuildJoinScanner {
     private lateinit var connection: Connection
 
     private suspend fun updateUserBase(guild: Guild) {
-        if (connection.isClosed) {
+        if (!::connection.isInitialized || connection.isClosed) {
             connection = DatabaseControl.getConnection()
         }
 

@@ -32,7 +32,7 @@ object CommandProducer : Filter<MessageReceivedEvent> {
                 //Retrieve instance TYPE is command
                 //Dispatch with custom Work Stealing pool, dynamic parallelism
                 CoroutineScope(commandExecutor).launch {
-                    val cmd = it.instance(message)
+                    val cmd = CommandType.instance(it, message)
                     cmd.exec()
                 }
             }
@@ -40,7 +40,7 @@ object CommandProducer : Filter<MessageReceivedEvent> {
         logger.trace("Finished processing command $content in $execTime ns")
     }
 
-    private fun isCommand(message: Message): CommandType? {
+    private fun isCommand(message: Message): Class<out Command>? {
 
         val raw = message.contentRaw
 

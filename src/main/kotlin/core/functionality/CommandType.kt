@@ -1,37 +1,32 @@
 package core.functionality
 
-import core.functionality.commands.Avatar
+import com.google.common.reflect.ClassPath
 import net.dv8tion.jda.api.entities.Message
-import kotlin.reflect.KClass
-import kotlin.reflect.cast
+import java.util.stream.Collectors
 
-enum class CommandType(private val command: KClass<out Command>) {
+object CommandType {
 
-    @Suppress("UNUSED")
-    AVATAR(Avatar::class);
+    @Suppress("UNCHECKED_CAST")
+
+    private val commandKlasses by lazy {
+        val path = ClassPath.from(Thread.currentThread().contextClassLoader)
+        val classInfos = path.getTopLevelClasses("core.functionality.commands")
+
+        classInfos.parallelStream().map { t -> t.load() as Class<out Command> }.collect(Collectors.toUnmodifiableList())
+    }
+
+    fun checkExists(request: String): Class<out Command>? {
+        val formattedRequest = request.split(" ")[0].substring(2).toUpperCase()
+        for (klass in commandKlasses) {
+            if (klass.simpleName.toUpperCase() == formattedRequest.toUpperCase()) {
+                return klass as Class<out Command>
+            }
+        }
+        return null
+    }
 
     @ExperimentalStdlibApi
-    fun instance(message: Message): Command {
-        return command.cast(command.constructors.firstOrNull()?.call(message))
+    fun instance(klass: Class<out Command>, message: Message): Command {
+        return klass.cast(klass.constructors.firstOrNull()?.newInstance(message))
     }
-
-    override fun toString(): String {
-        return this.name
-    }
-
-    companion object {
-
-        fun checkExists(raw: String): CommandType? {
-            //Strip Prefix
-            val formatted = raw.split(" ")[0].substring(2).toUpperCase()
-            for (value in values()) {
-                if (value.name == formatted)
-                    return value
-            }
-            return null
-        }
-
-    }
-
-
 }

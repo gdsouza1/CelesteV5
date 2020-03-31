@@ -21,7 +21,7 @@ class Avatar(message: Message) : Command(message) {
     companion object {
         val small = AppendableParameter("--", "small")
         val noembed = AppendableParameter("--", "noembed")
-        val size = AppendableParameter("--", "size", true)
+        val size = AppendableParameter("--", "size", true, "2048")
         val execTime = AppendableParameter("--", "exectime", true, "millis")
     }
 
@@ -51,7 +51,7 @@ class Avatar(message: Message) : Command(message) {
 
         val messages = ArrayList<Message>(users.size)
         for (id in users) {
-            val user: User? = message.jda.getUserById(id)
+            val user: User? = jda.getUserById(id)
             user?.let {
 
                 val msg = if (parameters present noembed)
@@ -79,7 +79,7 @@ class Avatar(message: Message) : Command(message) {
 
         val effAvatarRaw = user.effectiveAvatarUrl
 
-        eb.setAuthor(user.name, effAvatarRaw, message.jda.selfUser.effectiveAvatarUrl)
+        eb.setAuthor(user.name, effAvatarRaw, jda.selfUser.effectiveAvatarUrl)
 
         eb.setImage(avatarSizeSubroutine(effAvatarRaw))
 
