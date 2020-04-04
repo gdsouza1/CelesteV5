@@ -5,16 +5,17 @@ import net.dv8tion.jda.api.entities.Member
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.User
 import net.dv8tion.jda.internal.utils.tuple.MutablePair
-import org.json.JSONObject
-import org.json.JSONTokener
 import org.slf4j.LoggerFactory
 import java.awt.Color
+import java.awt.Image
+import java.awt.image.BufferedImage
+import java.awt.image.DataBufferByte
 import java.io.IOException
 import java.net.URL
 import java.util.function.Consumer
-
-private val available = Runtime.getRuntime().availableProcessors()
-val parallelism = if (available > 1) if (available % 2 == 0) available / 2 else available / 2 + 1 else available
+import javax.imageio.ImageIO
+import kotlin.math.ln
+import kotlin.math.pow
 
 //Whitespace characters  Credit: tchrist | https://stackoverflow.com/questions/4731055/whitespace-matching-regex-java
 var whitespace_chars: String = ("" /* dummy empty string for homogeneity */
@@ -168,4 +169,99 @@ fun <K, V, M> HashMap<K, V>.computeAllIfAbsent(map: HashMap<K, M>, mappingFuncti
 
         this.putIfAbsent(key, mappedValue)
     }
+}
+
+fun avgColor(image: Image): Color {
+    val width = image.getWidth(null)
+    val height = image.getHeight(null)
+    //Draw image to buffered image
+    val buffImage = BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR)
+    val graphics = buffImage.graphics
+    graphics.drawImage(image, 0, 0, null)
+    graphics.dispose()
+
+    val alphaChannel = buffImage.alphaRaster != null
+    //Byte array
+    val pixels = ((buffImage.raster.dataBuffer) as DataBufferByte).data
+
+    val result: Array<IntArray> = Array(height) { IntArray(width) }
+
+    if (alphaChannel) {
+        val pixelLength = 4
+        var pixel = 0
+        var row = 0
+        var col = 0
+        while (pixel + 3 < pixels.size) {
+            var argb = 0
+            argb += pixels[pixel].toInt() and 0xff shl 24 // alpha
+            argb += pixels[pixel + 1].toInt() and 0xff // blue
+            argb += pixels[pixel + 2].toInt() and 0xff shl 8 // green
+            argb += pixels[pixel + 3].toInt() and 0xff shl 16 // red
+            result[row][col] = argb
+            col++
+            if (col == width) {
+                col = 0
+                row++
+            }
+            pixel += pixelLength
+        }
+    } else {
+        val pixelLength = 3
+        var pixel = 0
+        var row = 0
+        var col = 0
+        while (pixel + 2 < pixels.size) {
+            var argb = 0
+            argb += -16777216 // 255 alpha
+            argb += pixels[pixel].toInt() and 0xff // blue
+            argb += pixels[pixel + 1].toInt() and 0xff shl 8 // green
+            argb += pixels[pixel + 2].toInt() and 0xff shl 16 // red
+            result[row][col] = argb
+            col++
+            if (col == width) {
+                col = 0
+                row++
+            }
+            pixel += pixelLength
+        }
+    }
+
+    var ba = 0
+    var ga = 0
+    var ra = 0
+    var aa = 0
+    for (arr in result) {
+        for (byte in arr) {
+            ra += byte and 0xFF
+            ga += byte shr 8 and 0xFF
+            ba += byte shr 16 and 0xFF
+            aa += byte shr 24 and 0xFF
+        }
+    }
+
+    val area = width * height
+    val r: Int = ba / area
+    val g: Int = ga / area
+    val b: Int = ra / area
+    val a: Int = aa / area
+
+    return Color(r, g, b, if (a < 0) 255 else a)
+}
+
+
+fun avgColor(url: String): Color {
+    return try {
+        val image = ImageIO.read(URL(url))
+        avgColor(image)
+    } catch (ex: Exception) {
+        Color.pink
+    }
+}
+
+fun memoryFormat(bytes: Long, si: Boolean): String? {
+    val unit = if (si) 1000 else 1024
+    if (bytes < unit) return "$bytes B"
+    val exp = (ln(bytes.toDouble()) / ln(unit.toDouble())).toInt()
+    val pre = (if (si) "kMGTPE" else "KMGTPE")[exp - 1].toString() + if (si) "" else "i"
+    return String.format("%.1f %sB", bytes / unit.toDouble().pow(exp.toDouble()), pre)
 }

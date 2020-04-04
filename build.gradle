@@ -46,10 +46,11 @@ dependencies {
     //Postgres
     api group: 'org.postgresql', name: 'postgresql', version: '42.2.11'
 
-    //Reflections
+    //Guava
     api group: 'com.google.guava', name: 'guava', version: '28.2-jre'
 
-
+    //Unirest
+    api group: 'com.mashape.unirest', name: 'unirest-java', version: '1.4.9'
 }
 
 application {

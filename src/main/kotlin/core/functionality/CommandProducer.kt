@@ -1,7 +1,6 @@
 package core.functionality
 
 import core.logger
-import core.parallelism
 import core.prefix
 import core.shouldAttentBots
 import kotlinx.coroutines.CoroutineScope
@@ -13,8 +12,7 @@ import java.util.concurrent.Executors
 import kotlin.system.measureNanoTime
 
 object CommandProducer : Filter<MessageReceivedEvent> {
-
-    private val commandExecutor = Executors.newWorkStealingPool(parallelism).asCoroutineDispatcher()
+    private val commandExecutor = Executors.newCachedThreadPool().asCoroutineDispatcher()
 
     private val logger = logger<CommandProducer>()
 
@@ -50,7 +48,6 @@ object CommandProducer : Filter<MessageReceivedEvent> {
                 if (shouldAttentBots || !shouldAttentBots && !message.author.isBot)
                 //check exists returns the CommandType ? exists : null
                     return CommandType.checkExists(raw)
-
         return null
     }
 }

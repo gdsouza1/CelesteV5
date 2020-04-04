@@ -14,6 +14,7 @@ import java.awt.Color
 import java.util.*
 import kotlin.collections.ArrayList
 
+@Suppress("UNUSED")
 class Avatar(message: Message) : Command(message) {
 
     private val logger = logger<Avatar>()

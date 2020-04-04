@@ -3,6 +3,7 @@ package core.functionality
 import core.computeAllIfAbsent
 import core.emptyConsumer
 import core.mutableCopy
+import core.not_whitespace_charclass
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageEmbed
 import net.dv8tion.jda.api.requests.restaction.MessageAction
@@ -43,14 +44,14 @@ abstract class Command(val message: Message) {
             }
         }
         Pair(timeToSet, labelToSet)
-    }.invoke()
+    }
 
-    private val getNanosFromStart: Long = { System.nanoTime() - startNanos }.invoke()
-    private val getMillisFromStart: Double = { getNanosFromStart / 1000000.0 }.invoke()
-    private val getSecondsFromStart: BigDecimal = { BigDecimal(getMillisFromStart / 1000.0) }.invoke()
+    private val getNanosFromStart = { System.nanoTime() - startNanos }
+    private val getMillisFromStart = { getNanosFromStart.invoke() / 1000000.0 }
+    private val getSecondsFromStart = { BigDecimal(getMillisFromStart.invoke()  / 1000.0) }
 
     protected val guild by lazy { message.guild }
-    private val channel by lazy { message.channel }
+    protected val channel by lazy { message.channel }
     protected val author by lazy { message.author }
     protected val jda by lazy { message.jda }
     protected var parameters: HashMap<AppendableParameter, Pair<Boolean, String?>> = HashMap()
@@ -132,6 +133,28 @@ abstract class Command(val message: Message) {
         parameters = parsedParameters
     }
 
+
+    protected fun getFirstNonParameter(string: String): String? {
+        val nonParameters = extractNonParameters(string)
+        return if (nonParameters.isNotEmpty()) nonParameters[0] else null
+    }
+
+    protected fun getAllNonParameters(string: String): Array<String> {
+        val nonParameters = extractNonParameters(string)
+        return nonParameters.toTypedArray()
+    }
+
+    private fun extractNonParameters(string: String): ArrayList<String> {
+        val pattern = Pattern.compile("(?<!$not_whitespace_charclass)(?!--|c>)$not_whitespace_charclass+")
+        val matcher = pattern.matcher(string)
+
+        val arr = ArrayList<String>()
+        while (matcher.find()) {
+            arr.add(matcher.group())
+        }
+        return arr
+    }
+
     protected fun appendParameters(pars: Collection<AppendableParameter>) {
         for (par in pars) {
             parameters[par] = Pair<Boolean, String?>(false, null)
@@ -190,7 +213,7 @@ abstract class Command(val message: Message) {
         channel.sendMessage(msg).queue(emptyConsumer(), stdFail)
     }
 
-    private fun simpleRespondAndQueue(str: String, logger: Logger) {
+    protected fun simpleRespondAndQueue(str: String, logger: Logger) {
         val stdFail = Consumer<Throwable> {
             logger.error("Failed to send message $str in ${channel.name} of guild ${guild.name} ", it)
         }
@@ -212,17 +235,17 @@ abstract class Command(val message: Message) {
     }
 
     protected fun sendExecutionTime(logger: Logger) {
-        val time = getTimeFromStart
+        val time = getTimeFromStart.invoke()
         simpleRespondAndQueue("```Execution time: ${time.first} ${time.second}", logger)
     }
 
     protected fun sendExecutionTime(timeParameter: AppendableParameter, logger: Logger) {
         if (parameters present timeParameter) {
             val pair = when (parameters subpar timeParameter) {
-                "n", "ns", "nanos", "nano", "nanoseconds", "nanosecond" -> Pair(getNanosFromStart, "nanoseconds")
-                "m", "ms", "millis", "milli", "milliseconds", "millisecond" -> Pair(getMillisFromStart, "milliseconds")
-                "s", "secs", "sec", "seconds", "second" -> Pair(getSecondsFromStart, "seconds")
-                else -> Pair(getMillisFromStart, "milliseconds (Invalid exectime parameter default to millis)")
+                "n", "ns", "nanos", "nano", "nanoseconds", "nanosecond" -> Pair(getNanosFromStart.invoke(), "nanoseconds")
+                "m", "ms", "millis", "milli", "milliseconds", "millisecond" -> Pair(getMillisFromStart.invoke(), "milliseconds")
+                "s", "secs", "sec", "seconds", "second" -> Pair(getSecondsFromStart.invoke(), "seconds")
+                else -> Pair(getMillisFromStart.invoke(), "milliseconds (Invalid exectime parameter default to millis)")
             }
             simpleRespondAndQueue("```Execution time: ${pair.first} ${pair.second}```", logger)
         }
